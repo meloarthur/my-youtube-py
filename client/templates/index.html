@@ -39,23 +39,28 @@
     });
 
     upload_button.addEventListener('click', function () {
-            console.log('Upload')
-            var fileInput = document.getElementById('video-input');
-            var file = fileInput.files[0];
-            var serialized_file = file.stream();
-            var formData = new FormData()
-            formData.append('file', file);
-            fetch('/upload', {
-                method: 'POST',
-                body: formData
-            })
-            .then(data => {
-                console.log(data);
-            })
-            .catch(error => {
-                console.log(error);
-            });
+        console.log('Upload');
+        var fileInput = document.getElementById('video-input');
+        var file = fileInput.files[0];
+        var serialized_file = file.stream();
+        var formData = new FormData();
+        formData.append('file', file);
+        fetch('/upload', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            if (response.ok) {
+                // Redirecionar para a página inicial após um upload bem-sucedido
+                window.location.href = '/';
+            } else {
+                console.log('Erro durante o upload');
+            }
+        })
+        .catch(error => {
+            console.log(error);
         });
+    });    
 
     document.addEventListener("DOMContentLoaded", function () {
         // Function to fetch video file names from the server
