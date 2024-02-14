@@ -4,6 +4,8 @@ import os
 import random
 
 class DataNodeManagerService(rpyc.Service):
+    ALIASES = ['DATANODE_MANAGER']
+
     def __init__(self):
         self.datanode_list = []
         self.load_datanodes()
@@ -47,17 +49,19 @@ class DataNodeManagerService(rpyc.Service):
             return None
         ip, port = random.choice(self.index[file_name])
         conn = rpyc.connect(ip, port)
-        video_data = conn.root.stream_file(file_name)
+        file_generator = conn.root.stream_file(file_name)
         conn.close()
         print(f"Video '{file_name}' streamed.")
-        return video_data
+        return file_generator
 
     def exposed_list_files(self):
-        return list(self.index.keys())
+        list_files = list(self.index.keys())
+        print(list_files)
+        return list_files
 
     def exposed_search_files(self, search_query):
         return [file_name for file_name in self.index if search_query in file_name]
 
 if __name__ == "__main__":
-    manager_server = ThreadedServer(DataNodeManagerService, port=10000)
+    manager_server = ThreadedServer(DataNodeManagerService, auto_register=True)
     manager_server.start()

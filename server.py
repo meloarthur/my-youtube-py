@@ -9,7 +9,8 @@ port = 9999
 def handle_client(client_socket):
     conn = rpyc.connect("localhost", 10000)  # Conexão com o DataManager
 
-    request = client_socket.recv(2**20).decode('utf-8')
+    request = client_socket.recv(2**20)
+    request = request.decode('utf-8')
 
     if request.startswith("UPLOAD "):
         file_name = request[7:]

@@ -1,6 +1,6 @@
 import rpyc
 import os
-
+from env import CHUNK_SIZE
 class FileService(rpyc.Service):
     PORT = 8084
     diretorio = f"uploads{PORT}"
@@ -21,12 +21,16 @@ class FileService(rpyc.Service):
         print(f"File '{file_name}' received and saved.")
 
     def exposed_stream_file(self, file_name):
-        # Handle streaming request
+        def file_reader(file):
+            while True:
+                chunk = file.read(CHUNK_SIZE)
+                if not chunk:
+                    break
+                yield chunk
         print(f"Streaming video: {file_name}")
         with open(f"{self.diretorio}/{file_name}", "rb") as video_file:
-            video_data = video_file.read()
-        print(f"Video '{file_name}' streamed.")
-        return video_data
+            print(f"Video '{file_name}' streamed.")
+            return file_reader(video_file)
 
 if __name__ == "__main__":
     from rpyc.utils.server import ThreadedServer
