@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, Response, jsonify
 import socket
 
-HOST = "127.0.0.1"
+HOST = "192.168.0.121"
 PORT = 9999
 
 app = Flask(__name__)
@@ -37,7 +37,7 @@ def stream():
     client.send(header)
     
     def generate(client):
-        chunk_size = 2**16
+        chunk_size = 2**20
         while True:
             data = client.recv(chunk_size)
             if not data:
@@ -60,4 +60,4 @@ def list_videos():
     return jsonify(nomes_arquivos)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', debug=True, port=5000)
+    app.run(host='0.0.0.0', debug=False, port=5000)

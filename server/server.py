@@ -9,7 +9,7 @@ port = 9999
 def handle_client(client_socket):
     conn = rpyc.connect("localhost", 10000)  # Conexão com o DataManager
 
-    request = client_socket.recv(2**16).decode('utf-8')
+    request = client_socket.recv(2**20).decode('utf-8')
 
     if request.startswith("UPLOAD "):
         file_name = request[7:]
@@ -18,7 +18,7 @@ def handle_client(client_socket):
         done = False
         temp = b""
         while not done:
-            data = client_socket.recv(2**16)
+            data = client_socket.recv(2**20)
             if data[-5:] == b"<END>":
                 done = True
                 temp += data[:-5]
@@ -47,16 +47,15 @@ def handle_client(client_socket):
     conn.close()
     
 
-if __name__ == "__main__":
-    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server.bind((host, port))
-    server.listen()
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server.bind((host, port))
+server.listen()
 
-    print(f"Servidor escutando conexões em {host}:{port}")
+print(f"Servidor escutando conexões em {host}:{port}")
 
-    while True:
-        client, address = server.accept()
-        print(f"Conexão de {address[0]}:{address[1]}")
+while True:
+    client, address = server.accept()
+    print(f"Conexão de {address[0]}:{address[1]}")
 
-        client_handler = threading.Thread(target=handle_client, args=(client,))
-        client_handler.start()
+    client_handler = threading.Thread(target=handle_client, args=(client,))
+    client_handler.start()
