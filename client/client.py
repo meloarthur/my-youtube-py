@@ -1,11 +1,11 @@
 from flask import Flask, render_template, request, Response, jsonify
 import socket
-import os
 
 HOST = "127.0.0.1"
-PORT = 8080
+PORT = 9999
 
 app = Flask(__name__)
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -14,29 +14,30 @@ def index():
 def upload():
     file = request.files['file']
     file_name = file.filename
+    print(file_name)
+    
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client.connect((HOST, PORT))
-    header = f"UPLOAD {file_name} "
-    header_formatted = f"{header: <1024}"
-    print(header_formatted)
-    client.send(header_formatted.encode())
+    
+    client.send(f"UPLOAD {file_name}".encode())
+
     data = file.read()
     client.sendall(data)
     client.send(b"<END>")
     client.close()
+    
     return "Upload realizado com sucesso!"
-
 
 @app.route('/stream')
 def stream():
     video_name = request.args.get('id')
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client.connect((HOST, PORT))
-    header = f"STREAM {video_name} "
-    client.send(f"{header: <1024}".encode())
+    header = f"STREAM {video_name} ".encode()
+    client.send(header)
     
     def generate(client):
-        chunk_size = 4096
+        chunk_size = 2**16
         while True:
             data = client.recv(chunk_size)
             if not data:
@@ -45,11 +46,18 @@ def stream():
         client.close()
     return Response(generate(client), content_type='video/mp4')
 
-@app.route('/list-videos')
+@app.route('/list-videos', methods=['GET', 'POST'])
 def list_videos():
-    video_folder = 'C:/Users/Arthur/Documents/my-youtube-py/videos/'
-    video_files = [f for f in os.listdir(video_folder) if os.path.isfile(os.path.join(video_folder, f)) and f.endswith(".mp4")]
-    return jsonify(video_files)
+    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client.connect((HOST, PORT))
+
+    client.send(f"LISTAR ".encode())  # Use the "STREAM" request format
+    # Receba a lista de nomes de arquivo do servidor
+    data = client.recv(2**20).decode('utf-8')
+    nomes_arquivos = data.split(',')
+
+    client.close()
+    return jsonify(nomes_arquivos)
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(host='0.0.0.0', debug=True, port=5000)

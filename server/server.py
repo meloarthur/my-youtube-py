@@ -1,65 +1,62 @@
 import socket
-import os
-import mimetypes
-import time
+import threading
+import rpyc
 
 # Defina o endereço e a porta do servidor
-host = '127.0.0.1'  # Substitua pelo endereço do servidor
-port = 8080
-path = 'C:/Users/Arthur/Documents/my-youtube-py/videos/'
-def detect_mimetype(filename):
-    # Detecta o tipo MIME do arquivo com base na extensão do arquivo
-    return mimetypes.guess_type(filename)[0]
+host = '0.0.0.0'
+port = 9999
 
-def upload_file(client, filename):
-    try:
-        with open(path + filename, 'wb') as file:
-            while True:
-                chunk = client.recv(4096)
-                if not chunk:
-                    break
-                file.write(chunk)
-    except Exception as e:
-        print(f"Erro ao enviar arquivo: {e}")
+def handle_client(client_socket):
+    conn = rpyc.connect("localhost", 10000)  # Conexão com o DataManager
 
-def serve_file(client, filename):
-    try:
-        with open(path + filename, 'rb') as file:
-            while True:
-                chunk = file.read(4096)
-                if not chunk:
-                    break
-                client.send(chunk)
-    except Exception as e:
-        print(f"Erro ao enviar arquivo: {e}")
+    request = client_socket.recv(2**16).decode('utf-8')
 
-def handle_request(client, address):
-    request = client.recv(1024)
-    header = request.decode('utf-8')
-    method, filename = header.split()
-    if(not method or not filename): return
-    if method == 'STREAM':
-        if os.path.exists(path + filename):
-            serve_file(client, filename)
-        else:
-            response = "ERROR"
-            client.send(response.encode())
-    elif method == 'UPLOAD':
-        print('LETS UPLOAD')
-        upload_file(client, filename)
+    if request.startswith("UPLOAD "):
+        file_name = request[7:]
+        print(f"Receiving file: {file_name}")
+
+        done = False
+        temp = b""
+        while not done:
+            data = client_socket.recv(2**16)
+            if data[-5:] == b"<END>":
+                done = True
+                temp += data[:-5]
+            else:
+                temp += data
+
+        conn.root.upload_file(file_name, temp)
+        print(f"File '{file_name}' received and saved.")
+
+    elif request.startswith("STREAM "):
+        video_file = request[7:]
+        print(f"Streaming video: {video_file}")
+
+        video_data = conn.root.stream_file(video_file)
+        if video_data:
+            client_socket.sendall(video_data)
+            client_socket.send(b"<END>")
+        client_socket.close()
+        print(f"Video '{video_file}' streamed.")
+
+    elif request.startswith("LISTAR "):
+        files_list = conn.root.list_files()
+        client_socket.send(','.join(files_list).encode('utf-8'))
+        client_socket.close()
+
+    conn.close()
     
 
 if __name__ == "__main__":
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.bind((host, port))
-    server.listen(5)
+    server.listen()
 
-    print(f"Servidor socket em execução em {host}:{port}")
+    print(f"Servidor escutando conexões em {host}:{port}")
 
     while True:
         client, address = server.accept()
         print(f"Conexão de {address[0]}:{address[1]}")
 
-        # Lide com a solicitação em uma nova thread para lidar com várias conexões
-        handle_request(client, address)
-        client.close()
+        client_handler = threading.Thread(target=handle_client, args=(client,))
+        client_handler.start()
