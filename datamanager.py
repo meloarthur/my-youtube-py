@@ -32,12 +32,13 @@ class DataNodeManagerService(rpyc.Service):
                 index.setdefault(file_name, []).append((ip, int(port)))
         return index
 
-    def exposed_upload_file(self, file_name, data):
+    def exposed_upload_file(self, file_name, file_generator):
         chosen_datanodes = random.sample(self.datanode_list, 3)
-        for ip, port in chosen_datanodes:
-            conn = rpyc.connect(ip, port)
-            conn.root.upload_file(file_name, data)
-            conn.close()
+        # for ip, port in chosen_datanodes:
+        ip, port = chosen_datanodes[0]
+        conn = rpyc.connect(ip, port)
+        conn.root.upload_file(file_name, file_generator)
+        conn.close()
         self.index[file_name] = chosen_datanodes
         with open("index.txt", "a") as index_file:
             for ip, port in chosen_datanodes:
@@ -50,7 +51,6 @@ class DataNodeManagerService(rpyc.Service):
         ip, port = random.choice(self.index[file_name])
         conn = rpyc.connect(ip, port)
         file_generator = conn.root.stream_file(file_name)
-        conn.close()
         print(f"Video '{file_name}' streamed.")
         return file_generator
 
@@ -63,5 +63,6 @@ class DataNodeManagerService(rpyc.Service):
         return [file_name for file_name in self.index if search_query in file_name]
 
 if __name__ == "__main__":
-    manager_server = ThreadedServer(DataNodeManagerService, auto_register=True)
+    manager_server = ThreadedServer(DataNodeManagerService, auto_register=True, protocol_config={'allow_public_attrs': True})
+    print("DATA MANAGER SERVER IS AWAKE")
     manager_server.start()

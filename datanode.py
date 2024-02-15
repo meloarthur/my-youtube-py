@@ -10,14 +10,12 @@ class FileService(rpyc.Service):
         if not os.path.exists(self.diretorio):
             os.makedirs(self.diretorio)
 
-    def on_disconnect(self, conn):
-        pass
-
-    def exposed_upload_file(self, file_name, data):
+    def exposed_upload_file(self, file_name, file_generator):
         # Handle file upload request
         print(f"Receiving file: {file_name}")
         with open(f"{self.diretorio}/{file_name}", "wb") as file:
-            file.write(data)
+            for data in file_generator:
+                file.write(data)
         print(f"File '{file_name}' received and saved.")
 
     def exposed_stream_file(self, file_name):
@@ -28,11 +26,12 @@ class FileService(rpyc.Service):
                     break
                 yield chunk
         print(f"Streaming video: {file_name}")
-        with open(f"{self.diretorio}/{file_name}", "rb") as video_file:
-            print(f"Video '{file_name}' streamed.")
-            return file_reader(video_file)
+        video_file = open(f"{self.diretorio}/{file_name}", "rb")
+        print(f"Video '{file_name}' streamed.")
+        return file_reader(video_file)
 
 if __name__ == "__main__":
     from rpyc.utils.server import ThreadedServer
     t = ThreadedServer(FileService, port=FileService.PORT)
+    print("DATANODE SERVER IS AWAKE")
     t.start()

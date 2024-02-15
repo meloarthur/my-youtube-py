@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, Response, jsonify
 import rpyc
+import json
 from env import CHUNK_SIZE
 HOST = "192.168.0.121"
 PORT = 9999
@@ -34,11 +35,10 @@ def stream():
     file_generator = datanode_manager.stream_file(video_id)
     return Response(file_generator, content_type='video/mp4')
 
-@app.route('/list-videos', methods=['GET', 'POST'])
+@app.route('/list-videos', methods=['GET'])
 def list_videos():
     list_videos = datanode_manager.list_files()
-    print(list_videos)
-    return jsonify(list_videos)
+    return jsonify(list(list_videos))
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=False, port=5000)
